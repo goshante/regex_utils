@@ -129,11 +129,12 @@ namespace ReUtils
 	}
 
 	//match
-	match::match(std::string& str, size_t begin, size_t end, const std::vector<std::string>& groups)
+	match::match(std::string& str, size_t begin, size_t end, const std::vector<std::string>& groups, const std::vector<grp_range>& granges)
 		: _str(&str)
 		, _begin(begin)
 		, _end(end)
 		, _groups(groups)
+		, _granges(granges)
 	{
 	}
 
@@ -142,6 +143,7 @@ namespace ReUtils
 		, _begin(copy._begin)
 		, _end(copy._end)
 		, _groups(copy._groups)
+		, _granges(copy._granges)
 	{
 	}
 
@@ -151,6 +153,7 @@ namespace ReUtils
 		_begin = copy._begin;
 		_end = copy._end;
 		_groups = copy._groups;
+		_granges = copy._granges;
 		return *this;
 	}
 
@@ -158,6 +161,11 @@ namespace ReUtils
 	{
 		if (IsMatching())
 			PatternReplace( *_str, _begin, _end, pattern, _groups );
+	}
+
+	std::string match::operator[](size_t i) const
+	{
+		return GetGroup(i);
 	}
 
 	size_t match::Begin() const
@@ -185,6 +193,17 @@ namespace ReUtils
 		if (n > _groups.size())
 			return "";
 		return _groups[n-1];
+	}
+
+	match::grp_range match::GetGroupRange(size_t n)
+	{
+		if (n == 0)
+			return { _begin, _end };
+
+		if (n > _granges.size())
+			return { std::string::npos, std::string::npos };
+
+		return _granges[n-1];
 	}
 
 	bool match::IsMatching() const
@@ -254,41 +273,28 @@ namespace ReUtils
 		std::regex exp(re);
 		std::smatch sm;
 		std::vector<std::string> groups;
+		std::vector<match::grp_range> ranges;
 		size_t begin = std::string::npos;
 		size_t end = std::string::npos;
 		std::string offstr = "";
 		std::string* pstr = &str;
 
-		if (offset > 0)
+		auto countGroupRange = [](const std::smatch::value_type& g, const std::string& str, size_t offset) -> match::grp_range
 		{
-			offstr = str.substr(offset, str.length() - offset);
-			pstr = &offstr;
-		}
-
-		if (offset >= str.length())
-			return match(str, begin, end, groups);
-
-		if (std::regex_search(*pstr, sm, exp)) 
-		{
-			for (size_t i = 0; i < sm.size(); i++)
-			{
-				if (i > 0)
-					groups.push_back(sm[i]);
-			}
-
 			size_t i = 0;
 			int n = 0;
-			for (auto it = pstr->begin(); it != pstr->end(); it++)
+			match::grp_range range = { std::string::npos, std::string::npos };
+			for (auto it = str.begin(); it != str.end(); it++)
 			{
-				if (it == sm[0].first)
+				if (it == g.first)
 				{
-					begin = i;
+					range.begin = i;
 					n++;
 				}
 
-				if (it == sm[0].second)
+				if (it == g.second)
 				{
-					end = i;
+					range.end = i;
 					n++;
 				}
 
@@ -297,17 +303,47 @@ namespace ReUtils
 				i++;
 			}
 
-			if (begin != std::string::npos && end == std::string::npos)
-				end = str.length() - 1;
+			if (range.begin != std::string::npos && range.end == std::string::npos)
+				range.end = str.length() - 1;
 
 			if (offset > 0)
 			{
-				begin += offset;
-				end += offset;
+				range.begin += offset;
+				range.end += offset;
 			}
+
+			return range;
+		};
+
+		if (offset > 0)
+		{
+			offstr = str.substr(offset, str.length() - offset);
+			pstr = &offstr;
 		}
 
-		return match(str, begin, end, groups);
+		if (offset >= str.length())
+			return match(str, begin, end, groups, ranges);
+
+		if (std::regex_search(*pstr, sm, exp)) 
+		{
+			for (size_t i = 0; i < sm.size(); i++)
+			{
+				if (i > 0)
+				{
+					groups.push_back(sm[i]);
+					ranges.push_back(countGroupRange(sm[i], *pstr, offset));
+				}
+				else
+				{
+					auto range = countGroupRange(sm[i], *pstr, offset);
+					begin = range.begin;
+					end = range.end;
+				}
+			}
+
+		}
+
+		return match(str, begin, end, groups, ranges);
 	}
 
 	matches SearchAll(std::string& str, const std::string re, size_t offset)

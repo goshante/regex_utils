@@ -10,25 +10,37 @@ namespace ReUtils
 
 	class match
 	{
+	public:
+		struct grp_range
+		{
+			size_t begin;
+			size_t end;
+		};
+
 	private:
 		size_t _begin;
 		size_t _end;
 		std::vector<std::string> _groups;
+		std::vector<grp_range> _granges;
 		std::string* _str;
 
 		match() = delete;
 
 	public:
-		match(std::string& str, size_t begin, size_t end, const std::vector<std::string>& groups);
+		match(std::string& str, size_t begin, size_t end,
+			const std::vector<std::string>& groups, 
+			const std::vector<grp_range>& granges);
 		match(const match& copy);
 		match& operator=(const match& copy);
 
 		void Replace(const std::string& pattern);
 
+		std::string operator[](size_t i) const;
 		size_t Begin() const;
 		size_t End() const;
 		std::string GetMatchingString() const;
 		std::string GetGroup(size_t n) const;
+		grp_range GetGroupRange(size_t n);
 		bool IsMatching() const;
 	};
 
