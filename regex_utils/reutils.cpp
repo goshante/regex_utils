@@ -7,7 +7,7 @@ namespace reu
 	struct rf_t
 	{
 		std::string re;
-		std::regex::flag_type flags;
+		std::regex_constants::syntax_option_type flags;
 	};
 
 	std::string IndexSubstr(const std::string& str, size_t begin, size_t end)
