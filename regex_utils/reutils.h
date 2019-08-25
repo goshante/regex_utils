@@ -11,17 +11,34 @@ namespace reu
 	class match_t
 	{
 	public:
-		struct grp_range_t
+		struct range_t
 		{
 			size_t begin;
 			size_t end;
+			range_t() : begin(0), end(0) {}
+			range_t(size_t b, size_t e) : begin(b), end(e) {}
+			range_t(const std::pair<size_t, size_t>& p) : begin(p.first), end(p.second) {}
+			range_t(const range_t& r) : begin(r.begin), end(r.end) {}
+			range_t& operator=(const range_t& r)
+			{
+				begin = r.begin;
+				end = r.end;
+				return *this;
+			}
+			range_t& operator=(const std::pair<size_t, size_t>& p)
+			{
+				begin = p.first;
+				end = p.second;
+				return *this;
+			}
+			size_t len() { return ((end - begin) + 1); }
 		};
 
 	private:
 		size_t _begin;
 		size_t _end;
 		std::vector<std::string> _groups;
-		std::vector<grp_range_t> _granges;
+		std::vector<range_t> _granges;
 		std::string* _str;
 
 		match_t() = delete;
@@ -29,7 +46,7 @@ namespace reu
 	public:
 		match_t(std::string& str, size_t begin, size_t end,
 			const std::vector<std::string>& groups, 
-			const std::vector<grp_range_t>& granges);
+			const std::vector<range_t>& granges);
 		match_t(const match_t& copy);
 		match_t& operator=(const match_t& copy);
 
@@ -40,8 +57,9 @@ namespace reu
 		size_t End() const;
 		std::string GetMatchingString() const;
 		std::string GetGroup(size_t n) const;
-		grp_range_t GetGroupRange(size_t n);
+		range_t GetGroupRange(size_t n);
 		bool IsMatching() const;
+		size_t Length() const;
 	};
 
 	class matches_t
@@ -62,6 +80,8 @@ namespace reu
 		match_t& operator[](size_t i);
 
 		void ReplaceAll(const std::string& pattern);
+		void ExcludeIndexRange(match_t::range_t range);
+		void ExcludeIndexRanges(std::vector<match_t::range_t> ranges);
 
 		std::vector<match_t>::iterator begin();
 		std::vector<match_t>::iterator end();

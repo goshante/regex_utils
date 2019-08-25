@@ -188,7 +188,7 @@ namespace reu
 	}
 
 	//match_t
-	match_t::match_t(std::string& str, size_t begin, size_t end, const std::vector<std::string>& groups, const std::vector<grp_range_t>& granges)
+	match_t::match_t(std::string& str, size_t begin, size_t end, const std::vector<std::string>& groups, const std::vector<range_t>& granges)
 		: _str(&str)
 		, _begin(begin)
 		, _end(end)
@@ -254,7 +254,7 @@ namespace reu
 		return _groups[n-1];
 	}
 
-	match_t::grp_range_t match_t::GetGroupRange(size_t n)
+	match_t::range_t match_t::GetGroupRange(size_t n)
 	{
 		if (n == 0)
 			return { _begin, _end };
@@ -268,6 +268,11 @@ namespace reu
 	bool match_t::IsMatching() const
 	{
 		return (_begin != std::string::npos);
+	}
+
+	size_t match_t::Length() const
+	{
+		return ((_end - _begin) + 1);
 	}
 
 	//matches_t
@@ -308,6 +313,28 @@ namespace reu
 			m.Replace(pattern);
 	}
 
+	void matches_t::ExcludeIndexRange(match_t::range_t range)
+	{
+		for (auto it = _mvec.begin(); it != _mvec.end(); it++)
+		{
+			auto& m = *it;
+			if (m.Begin() >= range.begin && m.Begin() <= range.end ||
+				m.End() >= range.begin && m.End() <= range.end)
+			{
+				_mvec.erase(it);
+				it = _mvec.begin();
+			}
+		}
+	}
+
+	void matches_t::ExcludeIndexRanges(std::vector<match_t::range_t> ranges)
+	{
+		for (auto& r : ranges)
+		{
+			ExcludeIndexRange(r);
+		}
+	}
+
 	std::vector<match_t>::iterator matches_t::begin()
 	{
 		return _mvec.begin();
@@ -343,7 +370,7 @@ namespace reu
 		std::regex exp(rf.re, rf.flags);
 		std::smatch sm;
 		std::vector<std::string> groups;
-		std::vector<match_t::grp_range_t> ranges;
+		std::vector<match_t::range_t> ranges;
 		size_t begin = std::string::npos;
 		size_t end = std::string::npos;
 		std::string offstr = "";
@@ -351,11 +378,11 @@ namespace reu
 		
 		
 
-		auto countGroupRange = [](const std::smatch::value_type& g, const std::string& str, size_t offset) -> match_t::grp_range_t
+		auto countGroupRange = [](const std::smatch::value_type& g, const std::string& str, size_t offset) -> match_t::range_t
 		{
 			size_t i = 0;
 			int n = 0;
-			match_t::grp_range_t range = { std::string::npos, std::string::npos };
+			match_t::range_t range = { std::string::npos, std::string::npos };
 			for (auto it = str.begin(); it != str.end(); it++)
 			{
 				if (it == g.first)
